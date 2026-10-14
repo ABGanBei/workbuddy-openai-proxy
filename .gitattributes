@@ -1,0 +1,10 @@
+# 统一换行符:仓库内一律 LF,避免不同平台协作者产生无意义的整文件 diff
+* text=auto eol=lf
+
+# 二进制/资源文件不做换行转换
+*.png binary
+*.jpg binary
+*.ico binary
+
+# 构建产物按文本处理(esbuild 输出 LF)
+*.cjs text eol=lf

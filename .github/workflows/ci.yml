@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: 类型检查 + 测试
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 类型检查
+        run: npm run typecheck
+
+      - name: 单元测试(账号存储 / 账号池 failover)
+        run: npm run test:unit
+
+      - name: 构建插件并跑 mock ST loader 端到端测试
+        run: npm run test:plugin
+
+      - name: 校验构建产物已同步提交
+        # 仓库提交了 dist/plugin/workbuddy-gateway.cjs 以便用户 git clone 免构建。
+        # 若改了 src/ 却没重新构建并提交,用户拿到的会是旧版本代码 —— 这里拦住它。
+        run: |
+          if ! git diff --quiet -- dist/plugin/workbuddy-gateway.cjs; then
+            echo "::error::dist/plugin/workbuddy-gateway.cjs 与 src/ 不同步。"
+            echo "请本地运行 npm run build:plugin 并提交更新后的产物。"
+            git --no-pager diff --stat -- dist/plugin/workbuddy-gateway.cjs
+            exit 1
+          fi
+          echo "✅ 构建产物与源码一致"
