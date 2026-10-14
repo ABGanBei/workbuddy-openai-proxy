@@ -1,0 +1,8 @@
+node_modules/
+dist/*
+!dist/plugin/
+dist/plugin/*
+!dist/plugin/workbuddy-gateway.cjs
+data/
+.env
+*.log

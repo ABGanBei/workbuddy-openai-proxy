@@ -1,0 +1,16 @@
+{
+    "display_name": "WorkBuddy Gateway",
+    "loading_order": 20,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "css": "",
+    "author": "ABGanBei",
+    "version": "1.0.0",
+    "homePage": "https://github.com/ABGanBei/workbuddy-openai-proxy",
+    "auto_update": false,
+    "minimum_client_version": "1.12.0",
+    "hooks": {
+        "activate": "onActivate"
+    }
+}

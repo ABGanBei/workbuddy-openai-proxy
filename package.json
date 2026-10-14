@@ -1,0 +1,41 @@
+{
+  "name": "workbuddy-openai-proxy",
+  "version": "1.0.0",
+  "description": "WorkBuddy Gateway for SillyTavern:OpenAI 兼容接口 + OAuth 多账号管理 + 账号池自动切换,作为 ST Server Plugin 运行",
+  "type": "module",
+  "main": "dist/plugin/workbuddy-gateway.cjs",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.17.0"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "build:plugin": "node scripts/build-plugin.mjs",
+    "prepack": "npm run build:plugin",
+    "start": "node dist/server.js",
+    "test": "tsx test/openai-test.ts",
+    "test:unit": "tsx test/unit.test.ts",
+    "test:plugin": "npm run build:plugin && tsx test/plugin-e2e.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "files": [
+    "dist/plugin/workbuddy-gateway.cjs",
+    "index.js",
+    "manifest.json",
+    "README.md"
+  ],
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.2",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
