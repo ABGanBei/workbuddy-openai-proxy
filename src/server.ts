@@ -39,14 +39,15 @@ const app = express()
 app.use(cors())
 app.use(express.json({ limit: '64mb' }))
 
-// 注册 gateway 全部路由
+// 注册 gateway 全部路由(standalone 模式:管理页与 OpenAI 端点同端口)
 registerGatewayRoutes(app, {
   pool: gateway.pool,
   client: gateway.client,
   store: gateway.store,
   models: gateway.models,
   config,
-  uiPage: () => renderUiPage('/'),
+  uiPage: () => renderUiPage('/', `http://${config.host}:${config.port}/v1`),
+  internalBaseUrl: `http://${config.host}:${config.port}/v1`,
 })
 
 // JSON 解析错误 → OpenAI 格式(express.json 中间件抛出 entity.parse.failed)

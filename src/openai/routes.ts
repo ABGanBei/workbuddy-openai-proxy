@@ -37,6 +37,8 @@ export interface GatewayDeps {
   config: AppConfig
   /** 管理页 HTML 生成函数(plugin 内嵌 /ui 页)。 */
   uiPage?: () => string
+  /** 内部回环 OpenAI 端点的 Base URL(展示给用户填进酒馆)。 */
+  internalBaseUrl?: string
 }
 
 /** 请求体解析(express.json 可能没挂;容忍 string/object 两种)。 */
@@ -214,11 +216,19 @@ export function registerGatewayRoutes(target: Router, deps: GatewayDeps): void {
     }
   })
 
-  // GET /ui —— 内嵌管理页
+  // GET /ui —— 内嵌管理页(带内部端点地址,便于用户复制)
   if (deps.uiPage !== undefined) {
     target.get('/ui', (_req, res) => {
       res.setHeader('Content-Type', 'text/html; charset=utf-8')
       res.send(deps.uiPage!())
     })
   }
+
+  // GET /internal-endpoint —— 机器可读的内部端点信息(排障用)
+  target.get('/internal-endpoint', (_req, res) => {
+    res.json({
+      baseUrl: deps.internalBaseUrl ?? null,
+      hint: '把 baseUrl 填进酒馆:Chat Completion → Custom (OpenAI-compatible) → Custom Endpoint',
+    })
+  })
 }

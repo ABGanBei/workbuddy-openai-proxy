@@ -831,7 +831,7 @@ function credentialFromEnv() {
     filePath: ""
   };
 }
-var import_node_fs3, import_node_os, import_node_path3, log7, WorkBuddyAuthError, LIVE_FILENAME, WorkBuddyAuth;
+var import_node_fs3, import_node_os, import_node_path3, log8, WorkBuddyAuthError, LIVE_FILENAME, WorkBuddyAuth;
 var init_auth = __esm({
   "src/workbuddy/auth.ts"() {
     "use strict";
@@ -840,7 +840,7 @@ var init_auth = __esm({
     import_node_path3 = require("node:path");
     init_at_rest();
     init_logger();
-    log7 = createLogger("auth");
+    log8 = createLogger("auth");
     WorkBuddyAuthError = class extends Error {
       /** 'not-found' | 'encrypted' | 'expired' */
       kind;
@@ -906,7 +906,7 @@ var init_auth = __esm({
           try {
             atRestKey = await readAtRestKey();
           } catch (error) {
-            log7.warn(`\u83B7\u53D6 WorkBuddy \u89E3\u5BC6\u5BC6\u94A5\u5931\u8D25: ${String(error)}`);
+            log8.warn(`\u83B7\u53D6 WorkBuddy \u89E3\u5BC6\u5BC6\u94A5\u5931\u8D25: ${String(error)}`);
           }
           if (atRestKey === void 0) {
             const paths = encryptedTexts.map((entry) => entry.path).join(", ");
@@ -969,11 +969,11 @@ var init_auth = __esm({
           };
           this.credential = refreshed;
           this.lastScanAtMs = Date.now();
-          log7.info(`WorkBuddy token \u5DF2\u5237\u65B0(domain=${refreshed.domain})`);
+          log8.info(`WorkBuddy token \u5DF2\u5237\u65B0(domain=${refreshed.domain})`);
           return refreshed;
         } catch (error) {
           if (credential.expiresAtMs > Date.now() + 3e4) {
-            log7.warn(`token \u5237\u65B0\u5931\u8D25,\u7EE7\u7EED\u7528\u65E7 token: ${String(error)}`);
+            log8.warn(`token \u5237\u65B0\u5931\u8D25,\u7EE7\u7EED\u7528\u65E7 token: ${String(error)}`);
             return credential;
           }
           throw new WorkBuddyAuthError("expired", `WorkBuddy token \u5237\u65B0\u5931\u8D25: ${String(error)}`);
@@ -1005,7 +1005,7 @@ async function seedLegacyAccounts(store, explicitFile) {
     const auth = new WorkBuddyAuth({ explicitFile });
     const credential = await auth.scan();
     if (credential === void 0) {
-      log8.info("\u672A\u53D1\u73B0\u65E7\u51ED\u636E(WORKBUDDY_TOKEN / \u684C\u9762\u767B\u5F55),\u8DF3\u8FC7\u6865\u63A5");
+      log9.info("\u672A\u53D1\u73B0\u65E7\u51ED\u636E(WORKBUDDY_TOKEN / \u684C\u9762\u767B\u5F55),\u8DF3\u8FC7\u6865\u63A5");
       return;
     }
     await store.add({
@@ -1019,18 +1019,18 @@ async function seedLegacyAccounts(store, explicitFile) {
       expiresAtMs: credential.expiresAtMs,
       ...credential.refreshExpiresAtMs === void 0 ? {} : { refreshExpiresAtMs: credential.refreshExpiresAtMs }
     });
-    log8.info(`\u65E7\u51ED\u636E\u5DF2\u5E76\u5165\u8D26\u53F7\u6C60: ${credential.nickname ?? credential.uin ?? credential.domain}`);
+    log9.info(`\u65E7\u51ED\u636E\u5DF2\u5E76\u5165\u8D26\u53F7\u6C60: ${credential.nickname ?? credential.uin ?? credential.domain}`);
   } catch (error) {
-    log8.warn(`\u65E7\u51ED\u636E\u6865\u63A5\u5931\u8D25(\u53EF\u5FFD\u7565,\u6539\u7528 OAuth \u767B\u5F55): ${String(error)}`);
+    log9.warn(`\u65E7\u51ED\u636E\u6865\u63A5\u5931\u8D25(\u53EF\u5FFD\u7565,\u6539\u7528 OAuth \u767B\u5F55): ${String(error)}`);
   }
 }
-var log8;
+var log9;
 var init_legacy_bridge = __esm({
   "src/workbuddy/legacy-bridge.ts"() {
     "use strict";
     init_auth();
     init_logger();
-    log8 = createLogger("legacy-bridge");
+    log9 = createLogger("legacy-bridge");
   }
 });
 
@@ -1039,8 +1039,7 @@ var plugin_entry_exports = {};
 __export(plugin_entry_exports, {
   exit: () => exit,
   info: () => info,
-  init: () => init,
-  registerGatewayOnApp: () => registerGatewayOnApp
+  init: () => init
 });
 module.exports = __toCommonJS(plugin_entry_exports);
 var import_node_path4 = require("node:path");
@@ -2570,10 +2569,16 @@ function registerGatewayRoutes(target, deps) {
       res.send(deps.uiPage());
     });
   }
+  target.get("/internal-endpoint", (_req, res) => {
+    res.json({
+      baseUrl: deps.internalBaseUrl ?? null,
+      hint: "\u628A baseUrl \u586B\u8FDB\u9152\u9986:Chat Completion \u2192 Custom (OpenAI-compatible) \u2192 Custom Endpoint"
+    });
+  });
 }
 
 // src/openai/ui.ts
-function renderUiPage(basePath) {
+function renderUiPage(basePath, internalBaseUrl) {
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -2605,6 +2610,10 @@ function renderUiPage(basePath) {
   button.primary { background: #3565c8; border-color: #3565c8; color: #fff; }
   button.danger { background: #7d2f35; border-color: #8d3940; }
   button:disabled { opacity: .45; cursor: default; }
+  select {
+    background: #2b3442; color: #e8eaf0; border: 1px solid #3a4556;
+    border-radius: 8px; padding: 8px 10px; font-size: .9rem;
+  }
   .badge {
     display: inline-block; padding: 1px 8px; border-radius: 999px;
     font-size: .75rem; background: #2b3442; color: #aeb8c6; margin-right: 4px;
@@ -2618,6 +2627,11 @@ function renderUiPage(basePath) {
   #loginBox { border-left: 3px solid #3565c8; }
   .link { color: #7fb0ff; word-break: break-all; }
   a.link { text-decoration: none; }
+  .url-box {
+    background: #10131a; border: 1px solid #2a303a; border-radius: 8px;
+    padding: 8px 10px; font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: .82rem; color: #9fe0b8; word-break: break-all; user-select: all;
+  }
   .hidden { display: none; }
   .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #4a5568; border-top-color: #7fb0ff; border-radius: 50%; animation: spin 1s linear infinite; vertical-align: -2px; }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -2627,7 +2641,15 @@ function renderUiPage(basePath) {
 <h1>WorkBuddy Gateway</h1>
 <div class="sub" id="serviceInfo">\u6B63\u5728\u52A0\u8F7D\u2026</div>
 
+<div class="card" style="border-left:3px solid #1f4d33">
+  <div class="status-line"><b>\u2460 \u628A\u8FD9\u4E2A\u5730\u5740\u586B\u8FDB\u9152\u9986\u7684 API \u8BBE\u7F6E</b><br>
+    Chat Completion \u2192 Custom (OpenAI-compatible) \u2192 Custom Endpoint:</div>
+  <div class="url-box" id="openaiBaseUrl">\u2014</div>
+  <div class="meta">\u6A21\u578B\u540D\u70B9\u9152\u9986\u91CC\u7684\u300C\u5237\u65B0\u300D\u6309\u94AE\u5373\u53EF\u81EA\u52A8\u5217\u51FA(\u76F4\u8FDE\u4E0A\u6E38,\u65E0\u9700 CSRF)\u3002</div>
+</div>
+
 <div class="card" id="loginBox">
+  <div class="status-line"><b>\u2461 \u6DFB\u52A0 WorkBuddy \u8D26\u53F7</b></div>
   <div class="row">
     <select id="regionSelect">
       <option value="cn">\u56FD\u5185\u7248 (codebuddy.cn)</option>
@@ -2643,22 +2665,51 @@ function renderUiPage(basePath) {
   <div id="accountList"><div class="status-line">\u6682\u65E0\u8D26\u53F7,\u70B9\u4E0A\u65B9"\u6DFB\u52A0\u8D26\u53F7"\u767B\u5F55\u3002</div></div>
 </div>
 
-<div class="card">
-  <div class="status-line"><b>SillyTavern \u914D\u7F6E:</b>API \u9009 Chat Completion \u2192 Custom (OpenAI-compatible),
-    Base URL \u586B <span class="link" id="baseUrl"></span>,\u6A21\u578B\u70B9\u5237\u65B0\u6309\u94AE\u81EA\u52A8\u5217\u51FA\u3002</div>
-</div>
-
 <script>
 (function () {
   var BASE = ${JSON.stringify(basePath)};
+  var OPENAI_BASE = ${JSON.stringify(internalBaseUrl ?? "")};
   var accounts = [];
+  var csrfToken = '';
+
+  // SillyTavern \u7684 POST \u5FC5\u987B\u5E26 X-CSRF-Token,\u5426\u5219 403(HTML)\u3002
+  function fetchCsrfToken() {
+    return fetch('/csrf-token', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { csrfToken = (d && d.token) || ''; })
+      .catch(function () { csrfToken = ''; });
+  }
 
   function api(path, opts) {
-    return fetch(BASE + path, Object.assign({ headers: { 'Content-Type': 'application/json' } }, opts));
+    var options = Object.assign({}, opts);
+    var headers = { 'Content-Type': 'application/json' };
+    if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+    options.headers = headers;
+    return fetch(BASE + path, options).then(function (res) {
+      return res.text().then(function (text) {
+        var data;
+        try { data = JSON.parse(text); }
+        catch (e) {
+          // \u975E JSON:\u591A\u534A\u662F CSRF/\u767D\u540D\u5355\u62E6\u622A\u7684 HTML \u9875
+          throw new Error('\u670D\u52A1\u7AEF\u8FD4\u56DE\u975E JSON(' + res.status + ')\u3002'
+            + (res.status === 403 ? '\u53EF\u80FD\u662F CSRF \u6821\u9A8C\u5931\u8D25,\u8BF7\u5237\u65B0\u672C\u9875\u91CD\u8BD5\u3002' : text.slice(0, 120)));
+        }
+        if (!res.ok) {
+          var msg = (data && data.error && data.error.message) || ('HTTP ' + res.status);
+          var err = new Error(msg);
+          err.status = res.status;
+          err.data = data;
+          throw err;
+        }
+        return data;
+      });
+    });
   }
+
   function el(id) { return document.getElementById(id); }
 
   function fmtMoney(n) { return n === undefined || n === null ? '\u2014' : Number(n).toFixed(2); }
+
   function statusBadge(a) {
     var s = a.lastStatus;
     if (!s) return '<span class="badge">\u672A\u6D4B\u8BD5</span>';
@@ -2715,7 +2766,7 @@ function renderUiPage(basePath) {
   }
 
   function refresh() {
-    return api('/api/accounts').then(function (r) { return r.json(); }).then(function (d) {
+    return api('/api/accounts').then(function (d) {
       accounts = d.accounts || [];
       render();
     }).catch(function (e) {
@@ -2724,21 +2775,21 @@ function renderUiPage(basePath) {
   }
 
   function setPrimary(id) {
-    api('/api/accounts/' + id + '/primary', { method: 'POST' }).then(function () { return refresh(); });
+    api('/api/accounts/' + id + '/primary', { method: 'POST' }).then(refresh).catch(function (e) { alert('\u5931\u8D25: ' + e.message); });
   }
 
   function testAccount(id, btn) {
     btn.disabled = true; btn.textContent = '\u6D4B\u8BD5\u4E2D\u2026';
-    api('/api/accounts/' + id + '/test', { method: 'POST' }).then(function (r) { return r.json(); })
+    api('/api/accounts/' + id + '/test', { method: 'POST' })
       .then(function (d) {
-        alert(d.ok ? '\u8D26\u53F7\u53EF\u7528\u3002\u79EF\u5206: ' + fmtMoney(d.credits && d.credits.total) : '\u5931\u8D25: ' + (d.error && d.error.message || '\u672A\u77E5\u9519\u8BEF'));
+        alert(d.ok ? '\u8D26\u53F7\u53EF\u7528\u3002\u79EF\u5206: ' + fmtMoney(d.credits && d.credits.total) : '\u5931\u8D25');
       })
-      .catch(function () { alert('\u6D4B\u8BD5\u8BF7\u6C42\u5931\u8D25'); })
+      .catch(function (e) { alert('\u5931\u8D25: ' + e.message); })
       .finally(function () { btn.disabled = false; btn.textContent = '\u6D4B\u8BD5'; refresh(); });
   }
 
   function removeAccount(id) {
-    api('/api/accounts/' + id, { method: 'DELETE' }).then(function () { return refresh(); });
+    api('/api/accounts/' + id, { method: 'DELETE' }).then(refresh).catch(function (e) { alert('\u5220\u9664\u5931\u8D25: ' + e.message); });
   }
 
   el('btnAdd').onclick = function () {
@@ -2748,21 +2799,14 @@ function renderUiPage(basePath) {
     progress.classList.remove('hidden');
     progress.innerHTML = '<span class="spinner"></span> \u6B63\u5728\u7533\u8BF7\u767B\u5F55\u4F1A\u8BDD\u2026';
     api('/api/accounts/login', { method: 'POST', body: JSON.stringify({ region: region }) })
-      .then(function (r) { return r.json(); })
       .then(function (d) {
-        if (d.error) throw new Error(d.error.message || '\u7533\u8BF7\u5931\u8D25');
         progress.innerHTML = '\u8BF7\u5728\u6253\u5F00\u7684\u65B0\u9875\u9762\u5B8C\u6210\u624B\u673A\u53F7\u9A8C\u8BC1\u7801\u767B\u5F55,\u5B8C\u6210\u540E\u672C\u9875\u4F1A\u81EA\u52A8\u5237\u65B0\u3002'
           + '<br><a class="link" href="' + d.verificationUri + '" target="_blank" rel="noopener">\u70B9\u6B64\u6253\u5F00 WorkBuddy \u767B\u5F55\u9875</a>';
         window.open(d.verificationUri, '_blank', 'noopener');
         var poll = function () {
           api('/api/accounts/login/' + d.loginId + '?region=' + encodeURIComponent(region))
-            .then(function (r) { return r.json(); })
             .then(function (p) {
-              if (p.done === false) {
-                setTimeout(poll, 3000);
-                return;
-              }
-              if (p.error) { throw new Error(p.error.message || '\u767B\u5F55\u5931\u8D25'); }
+              if (p.done === false) { setTimeout(poll, 3000); return; }
               progress.innerHTML = '<span class="badge ok">\u767B\u5F55\u6210\u529F</span>';
               el('btnAdd').disabled = false;
               refresh();
@@ -2780,17 +2824,160 @@ function renderUiPage(basePath) {
       });
   };
 
-  el('serviceInfo').textContent = 'OpenAI Base URL: ' + BASE;
-  el('baseUrl').textContent = BASE;
-  refresh();
-  setInterval(refresh, 60000);
+  // \u521D\u59CB\u5316:\u5148\u62FF CSRF token,\u518D\u52A0\u8F7D\u6570\u636E
+  fetchCsrfToken().then(function () {
+    if (OPENAI_BASE) {
+      el('serviceInfo').textContent = '\u7BA1\u7406\u7AEF\u70B9: ' + BASE;
+      el('openaiBaseUrl').textContent = OPENAI_BASE;
+    } else {
+      el('serviceInfo').textContent = 'OpenAI Base URL: ' + BASE;
+      el('openaiBaseUrl').textContent = BASE + '/v1';
+    }
+    refresh();
+    setInterval(refresh, 60000);
+  });
 })();
 </script>
 </body>
 </html>`;
 }
 
+// src/plugin/internal-server.ts
+var import_node_http = require("node:http");
+init_logger();
+var log7 = createLogger("internal-server");
+var DEFAULT_INTERNAL_PORT = 8001;
+var PORT_SCAN_RANGE = 12;
+async function readJsonBody2(req) {
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  if (chunks.length === 0) return {};
+  const text = Buffer.concat(chunks).toString("utf8");
+  if (text.trim() === "") return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return void 0;
+  }
+}
+function sendJson2(res, status, body) {
+  if (res.writableEnded) return;
+  res.statusCode = status;
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.end(JSON.stringify(body));
+}
+async function startInternalServer(options) {
+  const { gateway, config } = options;
+  const startPort = options.preferredPort ?? DEFAULT_INTERNAL_PORT;
+  const server = (0, import_node_http.createServer)((req, res) => {
+    void handle(req, res);
+  });
+  async function handle(req, res) {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    if (req.method === "OPTIONS") {
+      res.statusCode = 204;
+      res.end();
+      return;
+    }
+    const url = new URL(req.url ?? "/", "http://127.0.0.1");
+    const path = url.pathname.replace(/\/+$/, "") || "/";
+    try {
+      if (req.method === "GET" && path === "/healthz") {
+        sendJson2(res, 200, {
+          ok: true,
+          service: "workbuddy-gateway",
+          accounts: gateway.store.summaries()
+        });
+        return;
+      }
+      if (req.method === "GET" && path === "/v1/models") {
+        let primary;
+        try {
+          primary = await gateway.pool.resolvePrimary();
+        } catch (error) {
+          sendJson2(res, 401, {
+            error: {
+              message: error instanceof Error ? error.message : String(error),
+              type: "authentication_error",
+              code: "workbuddy_auth_failed"
+            }
+          });
+          return;
+        }
+        const list = await gateway.models.list(AccountPool.toCredential(primary));
+        sendJson2(res, 200, {
+          object: "list",
+          data: list.map((model) => ({
+            id: model.id,
+            object: "model",
+            created: 0,
+            owned_by: "workbuddy",
+            ...model.contextWindow > 0 ? { context_window: model.contextWindow } : {},
+            ...model.maxTokens > 0 ? { max_output_tokens: model.maxTokens } : {}
+          }))
+        });
+        return;
+      }
+      if (req.method === "POST" && path === "/v1/chat/completions") {
+        const body = await readJsonBody2(req);
+        await handleChatCompletion(body, res, {
+          pool: gateway.pool,
+          client: gateway.client,
+          models: gateway.models,
+          config
+        });
+        return;
+      }
+      sendJson2(res, 404, { error: { message: `Not Found: ${req.method} ${path}`, type: "invalid_request_error" } });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      log7.error(`\u5185\u90E8\u7AEF\u70B9\u5904\u7406\u5931\u8D25 ${req.method} ${path}: ${message}`);
+      sendJson2(res, 500, { error: { message: `\u5185\u90E8\u9519\u8BEF: ${message}`, type: "api_error", code: null } });
+    }
+  }
+  let boundPort = 0;
+  let lastError;
+  for (let offset = 0; offset < PORT_SCAN_RANGE; offset += 1) {
+    const candidate = startPort + offset;
+    try {
+      await new Promise((resolve, reject) => {
+        const onError = (error) => {
+          server.removeListener("listening", onListening);
+          reject(error);
+        };
+        const onListening = () => {
+          server.removeListener("error", onError);
+          resolve();
+        };
+        server.once("error", onError);
+        server.once("listening", onListening);
+        server.listen(candidate, "127.0.0.1");
+      });
+      boundPort = candidate;
+      break;
+    } catch (error) {
+      lastError = error;
+      log7.warn(`\u7AEF\u53E3 ${candidate} \u4E0D\u53EF\u7528,\u5C1D\u8BD5\u4E0B\u4E00\u4E2A`);
+    }
+  }
+  if (boundPort === 0) {
+    throw new Error(`\u65E0\u6CD5\u5728 ${startPort}~${startPort + PORT_SCAN_RANGE - 1} \u627E\u5230\u7A7A\u95F2\u7AEF\u53E3: ${String(lastError)}`);
+  }
+  const baseUrl = `http://127.0.0.1:${boundPort}/v1`;
+  log7.info(`\u5185\u90E8 OpenAI \u7AEF\u70B9\u5DF2\u542F\u52A8: ${baseUrl}(\u4EC5\u672C\u673A\u56DE\u73AF)`);
+  return {
+    port: boundPort,
+    baseUrl,
+    close: () => new Promise((resolve) => {
+      server.close(() => resolve());
+    })
+  };
+}
+
 // src/plugin/plugin-entry.ts
+var internalServer;
 function findStRoot(startDir) {
   let dir = startDir;
   for (let depth = 0; depth < 8; depth += 1) {
@@ -2810,21 +2997,36 @@ async function init(router) {
     config,
     accountsFile: (0, import_node_path4.join)(dataRoot, "accounts.json")
   });
+  if (internalServer === void 0) {
+    const envPort = Number.parseInt(process.env["WORKBUDDY_GATEWAY_PORT"] ?? "", 10);
+    internalServer = await startInternalServer({
+      gateway,
+      config,
+      preferredPort: Number.isFinite(envPort) && envPort > 0 ? envPort : DEFAULT_INTERNAL_PORT
+    });
+  }
   registerGatewayRoutes(router, {
     pool: gateway.pool,
     client: gateway.client,
     store: gateway.store,
     models: gateway.models,
     config,
-    uiPage: () => renderUiPage("/api/plugins/workbuddy-gateway")
+    uiPage: () => renderUiPage("/api/plugins/workbuddy-gateway"),
+    internalBaseUrl: internalServer.baseUrl
   });
   void Promise.resolve().then(() => (init_legacy_bridge(), legacy_bridge_exports)).then(
     ({ seedLegacyAccounts: seedLegacyAccounts2 }) => seedLegacyAccounts2(gateway.store, config.workbuddyAuthFile || void 0)
   );
   console.log("[workbuddy-gateway] ready \u2014 mounted at /api/plugins/workbuddy-gateway");
-  console.log("[workbuddy-gateway] Base URL for SillyTavern: http://127.0.0.1:8000/api/plugins/workbuddy-gateway/v1");
+  console.log("[workbuddy-gateway] \u7BA1\u7406\u9875: http://127.0.0.1:8000/api/plugins/workbuddy-gateway/ui");
+  console.log(`[workbuddy-gateway] >>> \u9152\u9986 API \u8BBE\u7F6E\u91CC\u586B\u8FD9\u4E2A Base URL: ${internalServer.baseUrl}`);
+  console.log("[workbuddy-gateway]     (Chat Completion \u2192 Custom (OpenAI-compatible) \u2192 Custom Endpoint)");
 }
 async function exit() {
+  if (internalServer !== void 0) {
+    await internalServer.close();
+    internalServer = void 0;
+  }
   console.log("[workbuddy-gateway] exit");
 }
 var info = {
@@ -2832,23 +3034,9 @@ var info = {
   name: "WorkBuddy Gateway",
   description: "\u628A WorkBuddy \u8D26\u53F7\u63A5\u5165 SillyTavern \u7684 OpenAI \u517C\u5BB9\u7F51\u5173:\u591A\u8D26\u53F7\u7BA1\u7406\u3001OAuth \u767B\u5F55\u3001\u8D26\u53F7\u6C60\u81EA\u52A8\u5207\u6362\u3002"
 };
-function registerGatewayOnApp(app, dataRoot) {
-  const config = loadConfig();
-  setLogLevel(config.logLevel);
-  const gateway = createGateway({ config, accountsFile: (0, import_node_path4.join)(dataRoot, "accounts.json") });
-  registerGatewayRoutes(app, {
-    pool: gateway.pool,
-    client: gateway.client,
-    store: gateway.store,
-    models: gateway.models,
-    config,
-    uiPage: () => renderUiPage("/")
-  });
-}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   exit,
   info,
-  init,
-  registerGatewayOnApp
+  init
 });

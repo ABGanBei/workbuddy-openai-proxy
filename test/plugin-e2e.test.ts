@@ -87,6 +87,34 @@ try {
     && uiText.includes('WorkBuddy Gateway')
     && uiText.includes('添加账号'))
 
+  // /internal-endpoint:内部回环端点信息(酒馆要填的 Base URL)
+  const internal = await fetch(`${base}/internal-endpoint`)
+  const internalBody = await internal.json() as { baseUrl: string | null }
+  check('GET /internal-endpoint 返回内部 Base URL', internal.status === 200
+    && typeof internalBody.baseUrl === 'string'
+    && internalBody.baseUrl.startsWith('http://127.0.0.1:'), `实际 ${String(internalBody.baseUrl)}`)
+
+  // 内部回环端点本身必须可用(这是酒馆真正调用的地址,不带 CSRF)
+  if (typeof internalBody.baseUrl === 'string') {
+    const internalHealth = await fetch(`${internalBody.baseUrl.replace(/\/v1$/, '')}/healthz`)
+    const internalHealthBody = await internalHealth.json() as { ok: boolean }
+    check('内部端点 /healthz 可用(酒馆聊天走这里,无 CSRF)', internalHealth.status === 200
+      && internalHealthBody.ok === true)
+
+    const internalModels = await fetch(`${internalBody.baseUrl}/models`)
+    check('内部端点 GET /v1/models 无账号时 401', internalModels.status === 401, `实际 ${internalModels.status}`)
+
+    // 关键:内部端点 POST 不会被 CSRF 拦截(应返回业务错误 401/400,而不是 403 HTML)
+    const internalChat = await fetch(`${internalBody.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'glm-5.3', messages: [{ role: 'user', content: 'hi' }] }),
+    })
+    const internalChatText = await internalChat.text()
+    check('内部端点 POST 不被 CSRF 拦截(非 403 HTML)', internalChat.status !== 403
+      && !internalChatText.trimStart().startsWith('<'), `实际 ${internalChat.status}`)
+  }
+
   // chat completions:无账号 401(账号池返回 session_dead → 401)
   const chat = await fetch(`${base}/v1/chat/completions`, {
     method: 'POST',
