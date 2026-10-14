@@ -47,6 +47,12 @@ cd ~/SillyTavern
 mkdir -p plugins
 git clone https://github.com/ABGanBei/workbuddy-openai-proxy.git plugins/workbuddy-openai-proxy
 ```
+**Windows PowerShell 用户：**上面的 `mkdir -p` 是类 Unix 命令。在 PowerShell 中请使用：
+
+```powershell
+New-Item -ItemType Directory -Force -Path plugins | Out-Null
+git clone https://github.com/ABGanBei/workbuddy-openai-proxy.git .\plugins\workbuddy-openai-proxy
+```
 
 克隆完成后目录应该是:
 
