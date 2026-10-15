@@ -94,7 +94,8 @@ export async function init(router: Router): Promise<void> {
     store: gateway.store,
     models: gateway.models,
     config,
-    uiPage: () => renderUiPage('/api/plugins/workbuddy-gateway'),
+    // 第二个参数必须传:管理页要把它展示给用户,让用户复制进酒馆 API 设置
+    uiPage: () => renderUiPage('/api/plugins/workbuddy-gateway', internalServer?.baseUrl),
     internalBaseUrl: internalServer.baseUrl,
   })
 

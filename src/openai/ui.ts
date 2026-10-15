@@ -68,6 +68,20 @@ export function renderUiPage(basePath: string, internalBaseUrl?: string): string
     font-size: .82rem; color: #9fe0b8; word-break: break-all; user-select: all;
   }
   .hidden { display: none; }
+  .cfg-table { width: 100%; border-collapse: collapse; margin: 8px 0 4px; }
+  .cfg-table td { padding: 6px 4px; vertical-align: top; border-bottom: 1px solid #232932; }
+  .cfg-table tr:last-child td { border-bottom: none; }
+  .cfg-key { color: #8a93a3; font-size: .82rem; width: 88px; white-space: nowrap; }
+  .cfg-val { font-size: .85rem; }
+  .copy-btn {
+    padding: 4px 10px; font-size: .78rem; margin-left: 6px;
+    background: #263041; border-color: #35435a;
+  }
+  .copy-btn.done { background: #1f4d33; border-color: #2a6b47; color: #9fe0b8; }
+  code {
+    background: #10131a; border: 1px solid #2a303a; border-radius: 5px;
+    padding: 1px 6px; font-size: .82rem; color: #cfe3ff;
+  }
   .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #4a5568; border-top-color: #7fb0ff; border-radius: 50%; animation: spin 1s linear infinite; vertical-align: -2px; }
   @keyframes spin { to { transform: rotate(360deg); } }
 </style>
@@ -77,10 +91,40 @@ export function renderUiPage(basePath: string, internalBaseUrl?: string): string
 <div class="sub" id="serviceInfo">正在加载…</div>
 
 <div class="card" style="border-left:3px solid #1f4d33">
-  <div class="status-line"><b>① 把这个地址填进酒馆的 API 设置</b><br>
-    Chat Completion → Custom (OpenAI-compatible) → Custom Endpoint:</div>
-  <div class="url-box" id="openaiBaseUrl">—</div>
-  <div class="meta">模型名点酒馆里的「刷新」按钮即可自动列出(直连上游,无需 CSRF)。</div>
+  <div class="status-line"><b>① 把下面这些填进酒馆的 API 设置</b><br>
+    <span class="meta">酒馆页面 → 顶部 🔌 图标(API 连接)→ 按下表逐项填</span></div>
+  <table class="cfg-table">
+    <tr>
+      <td class="cfg-key">API</td>
+      <td class="cfg-val">聊天补全(Chat Completion)</td>
+    </tr>
+    <tr>
+      <td class="cfg-key">聊天补全来源</td>
+      <td class="cfg-val">自定义(兼容 OpenAI)</td>
+    </tr>
+    <tr>
+      <td class="cfg-key">自定义端点<br>(基础 URL)</td>
+      <td class="cfg-val">
+        <span class="url-box" id="openaiBaseUrl">—</span>
+        <button class="copy-btn" id="copyBaseUrl">复制</button>
+      </td>
+    </tr>
+    <tr>
+      <td class="cfg-key">自定义 API 密钥</td>
+      <td class="cfg-val"><code id="apiKeyHint">sk-x</code>
+        <button class="copy-btn" id="copyApiKey">复制</button>
+        <span class="meta">本插件不校验,填任意非空值即可</span></td>
+    </tr>
+    <tr>
+      <td class="cfg-key">模型</td>
+      <td class="cfg-val">点「可用模型」右侧的 ⟳ 刷新按钮,从列表里选(如 <code>glm-5.3</code>)</td>
+    </tr>
+    <tr>
+      <td class="cfg-key">流式传输</td>
+      <td class="cfg-val">开启(打字机效果)</td>
+    </tr>
+  </table>
+  <div class="meta" id="endpointNote"></div>
 </div>
 
 <div class="card" id="loginBox">
@@ -259,15 +303,50 @@ export function renderUiPage(basePath: string, internalBaseUrl?: string): string
       });
   };
 
+  // 复制按钮:手机上没有方便的选择操作,一键复制最实用
+  function wireCopy(btnId, textOf) {
+    var btn = el(btnId);
+    if (!btn) return;
+    btn.onclick = function () {
+      var text = textOf();
+      if (!text) { alert('地址尚未就绪,请刷新页面'); return; }
+      var done = function () {
+        var old = btn.textContent;
+        btn.textContent = '已复制';
+        btn.classList.add('done');
+        setTimeout(function () { btn.textContent = old; btn.classList.remove('done'); }, 1500);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(function () { fallbackCopy(text, done); });
+      } else {
+        fallbackCopy(text, done);
+      }
+    };
+  }
+  // 兼容非 HTTPS / 旧 WebView:用临时 textarea 选中复制
+  function fallbackCopy(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { alert('复制失败,请手动长按选中: ' + text); }
+    document.body.removeChild(ta);
+  }
+
   // 初始化:先拿 CSRF token,再加载数据
   fetchCsrfToken().then(function () {
-    if (OPENAI_BASE) {
-      el('serviceInfo').textContent = '管理端点: ' + BASE;
-      el('openaiBaseUrl').textContent = OPENAI_BASE;
-    } else {
-      el('serviceInfo').textContent = 'OpenAI Base URL: ' + BASE;
-      el('openaiBaseUrl').textContent = BASE + '/v1';
-    }
+    var endpoint = OPENAI_BASE || (BASE + '/v1');
+    el('openaiBaseUrl').textContent = endpoint;
+    el('serviceInfo').textContent = '管理页: ' + BASE + ' · OpenAI 端点: ' + endpoint;
+    el('endpointNote').innerHTML = OPENAI_BASE
+      ? '说明:这个地址由插件自建,仅监听本机(127.0.0.1),专供酒馆后端调用 —— '
+        + '不要填酒馆自己的 8000 端口,那个端口上的 POST 会被 CSRF 拦截而返回 403。'
+      : '说明:本页面未拿到内部端点地址(可能插件版本较旧),请查看启动日志里 '
+        + '「酒馆 API 设置里填这个 Base URL」那一行。';
+    wireCopy('copyBaseUrl', function () { return endpoint; });
+    wireCopy('copyApiKey', function () { return 'sk-x'; });
     refresh();
     setInterval(refresh, 60000);
   });

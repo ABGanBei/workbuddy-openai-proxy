@@ -2633,6 +2633,20 @@ function renderUiPage(basePath, internalBaseUrl) {
     font-size: .82rem; color: #9fe0b8; word-break: break-all; user-select: all;
   }
   .hidden { display: none; }
+  .cfg-table { width: 100%; border-collapse: collapse; margin: 8px 0 4px; }
+  .cfg-table td { padding: 6px 4px; vertical-align: top; border-bottom: 1px solid #232932; }
+  .cfg-table tr:last-child td { border-bottom: none; }
+  .cfg-key { color: #8a93a3; font-size: .82rem; width: 88px; white-space: nowrap; }
+  .cfg-val { font-size: .85rem; }
+  .copy-btn {
+    padding: 4px 10px; font-size: .78rem; margin-left: 6px;
+    background: #263041; border-color: #35435a;
+  }
+  .copy-btn.done { background: #1f4d33; border-color: #2a6b47; color: #9fe0b8; }
+  code {
+    background: #10131a; border: 1px solid #2a303a; border-radius: 5px;
+    padding: 1px 6px; font-size: .82rem; color: #cfe3ff;
+  }
   .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #4a5568; border-top-color: #7fb0ff; border-radius: 50%; animation: spin 1s linear infinite; vertical-align: -2px; }
   @keyframes spin { to { transform: rotate(360deg); } }
 </style>
@@ -2642,10 +2656,40 @@ function renderUiPage(basePath, internalBaseUrl) {
 <div class="sub" id="serviceInfo">\u6B63\u5728\u52A0\u8F7D\u2026</div>
 
 <div class="card" style="border-left:3px solid #1f4d33">
-  <div class="status-line"><b>\u2460 \u628A\u8FD9\u4E2A\u5730\u5740\u586B\u8FDB\u9152\u9986\u7684 API \u8BBE\u7F6E</b><br>
-    Chat Completion \u2192 Custom (OpenAI-compatible) \u2192 Custom Endpoint:</div>
-  <div class="url-box" id="openaiBaseUrl">\u2014</div>
-  <div class="meta">\u6A21\u578B\u540D\u70B9\u9152\u9986\u91CC\u7684\u300C\u5237\u65B0\u300D\u6309\u94AE\u5373\u53EF\u81EA\u52A8\u5217\u51FA(\u76F4\u8FDE\u4E0A\u6E38,\u65E0\u9700 CSRF)\u3002</div>
+  <div class="status-line"><b>\u2460 \u628A\u4E0B\u9762\u8FD9\u4E9B\u586B\u8FDB\u9152\u9986\u7684 API \u8BBE\u7F6E</b><br>
+    <span class="meta">\u9152\u9986\u9875\u9762 \u2192 \u9876\u90E8 \u{1F50C} \u56FE\u6807(API \u8FDE\u63A5)\u2192 \u6309\u4E0B\u8868\u9010\u9879\u586B</span></div>
+  <table class="cfg-table">
+    <tr>
+      <td class="cfg-key">API</td>
+      <td class="cfg-val">\u804A\u5929\u8865\u5168(Chat Completion)</td>
+    </tr>
+    <tr>
+      <td class="cfg-key">\u804A\u5929\u8865\u5168\u6765\u6E90</td>
+      <td class="cfg-val">\u81EA\u5B9A\u4E49(\u517C\u5BB9 OpenAI)</td>
+    </tr>
+    <tr>
+      <td class="cfg-key">\u81EA\u5B9A\u4E49\u7AEF\u70B9<br>(\u57FA\u7840 URL)</td>
+      <td class="cfg-val">
+        <span class="url-box" id="openaiBaseUrl">\u2014</span>
+        <button class="copy-btn" id="copyBaseUrl">\u590D\u5236</button>
+      </td>
+    </tr>
+    <tr>
+      <td class="cfg-key">\u81EA\u5B9A\u4E49 API \u5BC6\u94A5</td>
+      <td class="cfg-val"><code id="apiKeyHint">sk-x</code>
+        <button class="copy-btn" id="copyApiKey">\u590D\u5236</button>
+        <span class="meta">\u672C\u63D2\u4EF6\u4E0D\u6821\u9A8C,\u586B\u4EFB\u610F\u975E\u7A7A\u503C\u5373\u53EF</span></td>
+    </tr>
+    <tr>
+      <td class="cfg-key">\u6A21\u578B</td>
+      <td class="cfg-val">\u70B9\u300C\u53EF\u7528\u6A21\u578B\u300D\u53F3\u4FA7\u7684 \u27F3 \u5237\u65B0\u6309\u94AE,\u4ECE\u5217\u8868\u91CC\u9009(\u5982 <code>glm-5.3</code>)</td>
+    </tr>
+    <tr>
+      <td class="cfg-key">\u6D41\u5F0F\u4F20\u8F93</td>
+      <td class="cfg-val">\u5F00\u542F(\u6253\u5B57\u673A\u6548\u679C)</td>
+    </tr>
+  </table>
+  <div class="meta" id="endpointNote"></div>
 </div>
 
 <div class="card" id="loginBox">
@@ -2824,15 +2868,50 @@ function renderUiPage(basePath, internalBaseUrl) {
       });
   };
 
+  // \u590D\u5236\u6309\u94AE:\u624B\u673A\u4E0A\u6CA1\u6709\u65B9\u4FBF\u7684\u9009\u62E9\u64CD\u4F5C,\u4E00\u952E\u590D\u5236\u6700\u5B9E\u7528
+  function wireCopy(btnId, textOf) {
+    var btn = el(btnId);
+    if (!btn) return;
+    btn.onclick = function () {
+      var text = textOf();
+      if (!text) { alert('\u5730\u5740\u5C1A\u672A\u5C31\u7EEA,\u8BF7\u5237\u65B0\u9875\u9762'); return; }
+      var done = function () {
+        var old = btn.textContent;
+        btn.textContent = '\u5DF2\u590D\u5236';
+        btn.classList.add('done');
+        setTimeout(function () { btn.textContent = old; btn.classList.remove('done'); }, 1500);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(function () { fallbackCopy(text, done); });
+      } else {
+        fallbackCopy(text, done);
+      }
+    };
+  }
+  // \u517C\u5BB9\u975E HTTPS / \u65E7 WebView:\u7528\u4E34\u65F6 textarea \u9009\u4E2D\u590D\u5236
+  function fallbackCopy(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { alert('\u590D\u5236\u5931\u8D25,\u8BF7\u624B\u52A8\u957F\u6309\u9009\u4E2D: ' + text); }
+    document.body.removeChild(ta);
+  }
+
   // \u521D\u59CB\u5316:\u5148\u62FF CSRF token,\u518D\u52A0\u8F7D\u6570\u636E
   fetchCsrfToken().then(function () {
-    if (OPENAI_BASE) {
-      el('serviceInfo').textContent = '\u7BA1\u7406\u7AEF\u70B9: ' + BASE;
-      el('openaiBaseUrl').textContent = OPENAI_BASE;
-    } else {
-      el('serviceInfo').textContent = 'OpenAI Base URL: ' + BASE;
-      el('openaiBaseUrl').textContent = BASE + '/v1';
-    }
+    var endpoint = OPENAI_BASE || (BASE + '/v1');
+    el('openaiBaseUrl').textContent = endpoint;
+    el('serviceInfo').textContent = '\u7BA1\u7406\u9875: ' + BASE + ' \xB7 OpenAI \u7AEF\u70B9: ' + endpoint;
+    el('endpointNote').innerHTML = OPENAI_BASE
+      ? '\u8BF4\u660E:\u8FD9\u4E2A\u5730\u5740\u7531\u63D2\u4EF6\u81EA\u5EFA,\u4EC5\u76D1\u542C\u672C\u673A(127.0.0.1),\u4E13\u4F9B\u9152\u9986\u540E\u7AEF\u8C03\u7528 \u2014\u2014 '
+        + '\u4E0D\u8981\u586B\u9152\u9986\u81EA\u5DF1\u7684 8000 \u7AEF\u53E3,\u90A3\u4E2A\u7AEF\u53E3\u4E0A\u7684 POST \u4F1A\u88AB CSRF \u62E6\u622A\u800C\u8FD4\u56DE 403\u3002'
+      : '\u8BF4\u660E:\u672C\u9875\u9762\u672A\u62FF\u5230\u5185\u90E8\u7AEF\u70B9\u5730\u5740(\u53EF\u80FD\u63D2\u4EF6\u7248\u672C\u8F83\u65E7),\u8BF7\u67E5\u770B\u542F\u52A8\u65E5\u5FD7\u91CC '
+        + '\u300C\u9152\u9986 API \u8BBE\u7F6E\u91CC\u586B\u8FD9\u4E2A Base URL\u300D\u90A3\u4E00\u884C\u3002';
+    wireCopy('copyBaseUrl', function () { return endpoint; });
+    wireCopy('copyApiKey', function () { return 'sk-x'; });
     refresh();
     setInterval(refresh, 60000);
   });
@@ -3011,7 +3090,8 @@ async function init(router) {
     store: gateway.store,
     models: gateway.models,
     config,
-    uiPage: () => renderUiPage("/api/plugins/workbuddy-gateway"),
+    // 第二个参数必须传:管理页要把它展示给用户,让用户复制进酒馆 API 设置
+    uiPage: () => renderUiPage("/api/plugins/workbuddy-gateway", internalServer?.baseUrl),
     internalBaseUrl: internalServer.baseUrl
   });
   void Promise.resolve().then(() => (init_legacy_bridge(), legacy_bridge_exports)).then(

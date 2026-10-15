@@ -94,6 +94,12 @@ try {
     && typeof internalBody.baseUrl === 'string'
     && internalBody.baseUrl.startsWith('http://127.0.0.1:'), `实际 ${String(internalBody.baseUrl)}`)
 
+  // 管理页必须把内部端点地址渲染进去(否则用户不知道酒馆 API 设置该填什么)
+  check('管理页内嵌内部端点地址', typeof internalBody.baseUrl === 'string'
+    && uiText.includes(internalBody.baseUrl), `页面里找不到 ${String(internalBody.baseUrl)}`)
+  check('管理页列出酒馆配置项', uiText.includes('自定义端点') && uiText.includes('聊天补全来源'))
+  check('管理页有复制按钮', uiText.includes('copyBaseUrl') && uiText.includes('复制'))
+
   // 内部回环端点本身必须可用(这是酒馆真正调用的地址,不带 CSRF)
   if (typeof internalBody.baseUrl === 'string') {
     const internalHealth = await fetch(`${internalBody.baseUrl.replace(/\/v1$/, '')}/healthz`)
