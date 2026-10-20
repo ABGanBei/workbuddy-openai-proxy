@@ -77,6 +77,29 @@ git add dist/plugin/workbuddy-gateway.cjs
 - **测试随改动更新**:新增失败分类、新路由、新调度规则时,同步补
   `test/unit.test.ts` 或 `test/plugin-e2e.test.ts` 的断言。
 
+### 上游准入闸(会持续收紧,务必先读)
+
+WorkBuddy 网关对 chat 请求有**多道互相独立**的准入校验,命中就返回
+`400 / 11128`。已知的闸(时间线):
+
+| 闸 | 要求 | 我们的实现位置 |
+| --- | --- | --- |
+| 一 | 会话**首条必须是 `system`**,`developer` 也不行 | `chatCompletion.ts` 的 `prepareChatBody()`(developer→system + 补位) |
+| 二 | chat 请求必须带 **`X-Conversation-ID` / `X-Conversation-Request-ID` / `X-Conversation-Message-ID`**,三个齐、每次新生成、互不相同 | `client.ts` 的 `conversationHeaders()` |
+
+排障要点(踩过的坑):
+
+- **不要按 `displayTips` 去改 User-Agent**,那句"请从官方客户端重新发送"在每一道闸上都会出现;
+  真要判断,看报文里的 `msg` 字面原因,并按"**做了什么/缺了什么**"二分,不要按文案分类。
+- **闸是叠加的**,修好三件套不代表可以删掉 `ensureSystemHead()`(缺 system 仍然 400)。
+- **三件套只能加在 chat 端点**。billing / refresh / 模型目录都不能带
+  (`test/conversation-headers.test.ts` 有断言守着,泄漏会让计费侧行为异常)。
+- **UUID 必须每请求新生成**。复用等于拿一个 id 冒充三次会话,破坏上游的会话关联。
+- 改这类东西**必须留行为级测试**(mock fetch 断言真实请求头),不要用 grep 源码字符串——
+  文本断言在实现调整后会给出虚假的安全感。
+
+跑守卫:`npm run test:headers`。改坏了要能看到它变红(做过变异验证)。
+
 ### 不要提交的内容
 
 已在 `.gitignore` 中排除,提交前留意 `git status`:

@@ -14,6 +14,7 @@
  * 响应本身就是 OpenAI 兼容的 SSE(data: {...}\n\n ... data: [DONE]\n\n)。
  */
 import type { WorkBuddyCredential } from './auth.js'
+import { randomUUID } from 'node:crypto'
 import { createLogger } from '../utils/logger.js'
 
 const log = createLogger('client')
@@ -72,8 +73,30 @@ function commonHeaders(credential: WorkBuddyCredential): Record<string, string> 
   }
 }
 
-/** 聊天请求头,沿用官方 CLI 的 X-No-* 约定。 */
-function chatHeaders(credential: WorkBuddyCredential): Record<string, string> {
+/**
+ * chat 端点要求的「会话身份三件套」。
+ *
+ * 上游自 2026-10-16 起对 chat 请求增加渠道校验(400/11128
+ * "Illegal API invocation from an unapproved channel"):请求必须携带这三个头,
+ * 缺任何一个都会被拒。值由客户端自己生成即可(网关不校验来源),
+ * 但必须**每次请求重新生成、三个互不相同**——复用等于拿一个 id 冒充三次会话,
+ * 会破坏上游自己的会话关联。
+ *
+ * 只加在 chat 端点;billing / refresh / 模型目录都不加(它们在网关侧走别的校验)。
+ */
+function conversationHeaders(): Record<string, string> {
+  return {
+    'X-Conversation-ID': randomUUID(),
+    'X-Conversation-Request-ID': randomUUID(),
+    'X-Conversation-Message-ID': randomUUID(),
+  }
+}
+
+/**
+ * 聊天请求头,沿用官方 CLI 的 X-No-* 约定。
+ * 导出仅供测试断言使用(生产代码通过 chatStream 间接调用)。
+ */
+export function chatHeaders(credential: WorkBuddyCredential): Record<string, string> {
   return {
     ...commonHeaders(credential),
     'Content-Type': 'application/json',
@@ -84,6 +107,8 @@ function chatHeaders(credential: WorkBuddyCredential): Record<string, string> {
       : { 'X-Enterprise-Id': credential.enterpriseId }),
     ...(credential.domain === '' ? { 'X-No-Department-Info': '1' } : { 'X-Domain': credential.domain }),
     'X-Product': 'SaaS',
+    // 渠道校验三件套:只在这一处展开,保证所有 chat 路径都吃到
+    ...conversationHeaders(),
   }
 }
 

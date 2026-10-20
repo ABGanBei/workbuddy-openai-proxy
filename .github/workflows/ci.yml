@@ -27,6 +27,9 @@ jobs:
       - name: 单元测试(账号存储 / 账号池 failover)
         run: npm run test:unit
 
+      - name: 渠道校验守卫(会话三件套 / system 归一化)
+        run: npm run test:headers
+
       - name: 构建插件并跑 mock ST loader 端到端测试
         run: npm run test:plugin
 

@@ -253,6 +253,25 @@ deepseek-v4.1-flash   kimi-k3-1   kimi-k2.6   hy3   minimax-m3   ...
 管理页点该账号的「测试」重新验证;若确实失效(如长期未用、在别处退出登录),
 删掉该账号后重新「+ 添加账号」登录一次。
 
+### 聊天报 400 / 11128(Illegal API invocation from an unapproved channel)
+
+**你的插件版本旧了**,不是账号问题,也不是模型下线。
+
+WorkBuddy 网关会陆续增加 chat 请求的准入校验(例如 2026-10-16 起要求携带
+`X-Conversation-*` 会话身份三件套)。旧版插件不带这些头,于是**每个模型、每一步都失败**,
+很容易被误判成账号挂了。
+
+修法:
+
+```bash
+cd ~/SillyTavern/plugins/workbuddy-openai-proxy
+git pull
+# 重启 SillyTavern
+```
+
+> 记住这条:**遇到 400/11128 先升级插件**,再谈其它。
+> 如果升级到最新仍报 11128,把完整报文(含 `msg`)发出来 —— 上游可能又加了新闸。
+
 ### `git clone` 提示输入用户名密码
 
 说明仓库是 Private。到 GitHub 仓库页 → Settings → 最底部 Danger Zone →

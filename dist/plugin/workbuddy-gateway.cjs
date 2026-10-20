@@ -505,7 +505,7 @@ function isEncryptedFieldWrapper(value) {
   return keys.length === 2 && keys[0] === "$wbEncrypted" && keys[1] === "envelope" && wrapper["$wbEncrypted"] === 1 && typeof wrapper["envelope"] === "string";
 }
 function deriveAtRestKeyId(key) {
-  return (0, import_node_crypto2.createHash)("sha256").update(key).digest("hex").slice(0, 16);
+  return (0, import_node_crypto3.createHash)("sha256").update(key).digest("hex").slice(0, 16);
 }
 function deriveAtRestKey(payloadJson) {
   let payload;
@@ -521,7 +521,7 @@ function deriveAtRestKey(payloadJson) {
   if (typeof secret !== "string" || secret === "") {
     throw new Error("workbuddy: at-rest key payload carries no atRestSecretKey");
   }
-  return (0, import_node_crypto2.createHash)("sha256").update(secret, "utf8").digest();
+  return (0, import_node_crypto3.createHash)("sha256").update(secret, "utf8").digest();
 }
 function openEncryptedField(field, key) {
   let envelope;
@@ -545,7 +545,7 @@ function openEncryptedField(field, key) {
   if (keyId !== expectedKeyId) {
     throw new Error(`workbuddy: encrypted field belongs to key ${keyId}, not the available key ${expectedKeyId}`);
   }
-  const decipher = (0, import_node_crypto2.createDecipheriv)("aes-256-gcm", key, Buffer.from(nonce, "base64"), { authTagLength: 16 });
+  const decipher = (0, import_node_crypto3.createDecipheriv)("aes-256-gcm", key, Buffer.from(nonce, "base64"), { authTagLength: 16 });
   decipher.setAAD(fieldAad(keyId, suite));
   decipher.setAuthTag(Buffer.from(authTag, "base64"));
   return Buffer.concat([
@@ -684,12 +684,12 @@ function readAtRestKey() {
   });
   return inflightKey;
 }
-var import_node_child_process, import_node_crypto2, import_node_fs2, import_node_path2, FRAMING_CODE, STANDARD_FORMAT_ID, AAD_DOMAIN, SYMMETRIC_SCHEME, WORKBUDDY_APP_EXECUTABLE_ENV, KEY_FETCH_TIMEOUT_MS, APP_EXECUTABLE_NAME, cachedKey, inflightKey;
+var import_node_child_process, import_node_crypto3, import_node_fs2, import_node_path2, FRAMING_CODE, STANDARD_FORMAT_ID, AAD_DOMAIN, SYMMETRIC_SCHEME, WORKBUDDY_APP_EXECUTABLE_ENV, KEY_FETCH_TIMEOUT_MS, APP_EXECUTABLE_NAME, cachedKey, inflightKey;
 var init_at_rest = __esm({
   "src/workbuddy/at-rest.ts"() {
     "use strict";
     import_node_child_process = require("node:child_process");
-    import_node_crypto2 = require("node:crypto");
+    import_node_crypto3 = require("node:crypto");
     import_node_fs2 = require("node:fs");
     import_node_path2 = require("node:path");
     FRAMING_CODE = {
@@ -1462,6 +1462,7 @@ var AccountPool = class _AccountPool {
 };
 
 // src/workbuddy/client.ts
+var import_node_crypto = require("node:crypto");
 init_logger();
 var log3 = createLogger("client");
 var CN_CHAT_BASE = "https://copilot.tencent.com";
@@ -1500,6 +1501,13 @@ function commonHeaders(credential) {
     "User-Agent": CLIENT_UA
   };
 }
+function conversationHeaders() {
+  return {
+    "X-Conversation-ID": (0, import_node_crypto.randomUUID)(),
+    "X-Conversation-Request-ID": (0, import_node_crypto.randomUUID)(),
+    "X-Conversation-Message-ID": (0, import_node_crypto.randomUUID)()
+  };
+}
 function chatHeaders(credential) {
   return {
     ...commonHeaders(credential),
@@ -1508,7 +1516,9 @@ function chatHeaders(credential) {
     ...credential.uid === "" ? { "X-No-User-Id": "1" } : { "X-User-Id": credential.uid },
     ...credential.enterpriseId === void 0 || credential.enterpriseId === "" ? { "X-No-Enterprise-Id": "1" } : { "X-Enterprise-Id": credential.enterpriseId },
     ...credential.domain === "" ? { "X-No-Department-Info": "1" } : { "X-Domain": credential.domain },
-    "X-Product": "SaaS"
+    "X-Product": "SaaS",
+    // 渠道校验三件套:只在这一处展开,保证所有 chat 路径都吃到
+    ...conversationHeaders()
   };
 }
 function refreshHeaders(credential) {
@@ -1958,7 +1968,7 @@ function createGateway(options) {
 init_logger();
 
 // src/workbuddy/oauth.ts
-var import_node_crypto = require("node:crypto");
+var import_node_crypto2 = require("node:crypto");
 var CN_BILLING_BASE2 = "https://www.codebuddy.cn";
 var GLOBAL_BILLING_BASE = "https://www.workbuddy.ai";
 var API_PREFIX = "/v2/plugin";
@@ -2041,7 +2051,7 @@ async function oauthStart(region, options) {
     return { error: `\u767B\u5F55\u670D\u52A1\u6CA1\u6709\u7B7E\u53D1 state (http ${response.status})` };
   }
   const authUrl = firstString(data, ["authUrl", "auth_url", "url", "Url"]) || `${base}/login?state=${encodeURIComponent(state)}`;
-  const loginId = `wbo_${(0, import_node_crypto.randomUUID)().replaceAll("-", "")}`;
+  const loginId = `wbo_${(0, import_node_crypto2.randomUUID)().replaceAll("-", "")}`;
   sessions.set(loginId, {
     region,
     base,

@@ -16,7 +16,9 @@
     "start": "node dist/server.js",
     "test": "tsx test/openai-test.ts",
     "test:unit": "tsx test/unit.test.ts",
+    "test:headers": "tsx test/conversation-headers.test.ts",
     "test:plugin": "npm run build:plugin && tsx test/plugin-e2e.test.ts",
+    "test:all": "tsx test/unit.test.ts && tsx test/conversation-headers.test.ts && npm run test:plugin",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "files": [
